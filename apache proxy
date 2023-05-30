@@ -1,0 +1,67 @@
+# Steps to Use Apache as a Reverse Proxy on Ubuntu
+
+Launch an EC2 instance of Ubuntu AMI with inbound access for ssh and http traffic in security group rule. Once, EC2 instance starts running then connect to instance via ssh key-pairs and run below commands within instance. 
+
+# Install apache service
+$ sudo apt install apache2 -y
+
+# To enable four proxy modules, execute the following commands in succession.
+$ sudo a2enmod proxy
+$ sudo a2enmod proxy_http
+$ sudo a2enmod proxy_balancer
+$ sudo a2enmod lbmethod_byrequests
+
+# Restart Apache.
+
+$ sudo systemctl restart apache2
+
+# Creating Backend Test Servers to run python flask application on port 8080
+$ sudo apt-get update
+$ sudo apt-get install python3-pip -y
+$ sudo pip3 install Flask==1.1.4
+
+# Now that all the required components are installed, start by creating a new file that will contain the code for the backend server in the home directory of the current user.
+
+$ nano ~/backend1.py
+
+# Copy the following code into the file, then save and close it.
+
+from flask import Flask
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return 'Hello world!'
+
+# Use the following command to start the background server on port 8080. This also redirects Flask’s output to /dev/null because it would cloud the console output further on.
+
+FLASK_APP=~/backend1.py flask run --port=8080 >/dev/null 2>&1 &
+
+# You can test that the two servers are running using curl. Test the server:
+
+curl http://127.0.0.1:8080/
+
+# Create backup of default Apache configuration file
+
+sudo cp /etc/apache2/sites-available/000-default.conf /etc/apache2/sites-available/000-default.conf.bak
+
+# Open the default Apache configuration file using nano or your favorite text editor.
+
+sudo nano /etc/apache2/sites-available/000-default.conf
+
+# Inside that file, you will find the <VirtualHost *:80> block starting on the first line. Remove the exsting contents and below code for proxy configuration for application port 8080.
+
+<VirtualHost *:80>
+    ProxyPreserveHost On
+
+    ProxyPass / http://127.0.0.1:8080/
+    ProxyPassReverse / http://127.0.0.1:8080/
+</VirtualHost>
+
+# Restart Apache.
+
+sudo systemctl restart apache2
+
+ # NOW, if you access http://your_server_public_ip in a web browser, you will see your backend server response 'Hello world!' in browser instead of the standard Apache welcome page. 
+
+ 
